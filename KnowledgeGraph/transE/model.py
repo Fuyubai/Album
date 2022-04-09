@@ -34,7 +34,6 @@ class TransE(nn.Module):
         self.rel_embeddings.weight.data = F.normalize(self.rel_embeddings.weight.data, 2, -1)
 
     def forward(self, inp):
-        inp = torch.tensor(inp)
         inp = torch.transpose(inp, 0, 1)
         self.ent_embeddings.weight.data = F.normalize(self.ent_embeddings.weight.data, 2, -1)
         

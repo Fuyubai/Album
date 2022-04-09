@@ -21,6 +21,9 @@ class MarginLoss(nn.Module):
         n_score = score[tmp:]
         return self.margin + torch.max(p_score - n_score, -self.margin).mean()
 
+    def to(self, device):
+        self.margin = self.margin.to(device)
+
 if __name__ == '__main__':
     l = MarginLoss(6.0)
     tmp = torch.randn((256, ))
