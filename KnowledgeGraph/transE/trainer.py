@@ -63,30 +63,25 @@ class Trainer():
         self.model.eval()
         top10 = 0
         mr = 0
-        count = 0
         with torch.no_grad():
             for corrupted_triples, triple in tqdm(self.test_dataloader.batch_sample_corrupt(mode, need_filter)):
                 data = torch.tensor(corrupted_triples, dtype=torch.int64).to(self.device)
                 output = self.model(data)
                 
-                data_ = data[:, mode].cpu().tolist()
-                output_ = output.cpu().tolist()
-                res = list(zip(data_, output_))
-                res.sort(key=lambda x: x[1])
-                res = [r[0] for r in res]
-                index = res.index(triple[mode]) + 1
+                res = torch.cat((data[:, mode].reshape(-1, 1), output.reshape(-1, 1)), dim=-1)
+                res = res[res[:, 1].sort()[1]]
+                index = (res[:, 0] == triple[mode]).nonzero(as_tuple=True)[0].item()
+                # res = list(zip(data_, output_))
+                # res.sort(key=lambda x: x[1])
+                # res = [r[0] for r in res]
+                # index = res.index(triple[mode]) + 1
                 if index <= 10:
                     top10 += 1
                 mr += index
-
-                count += 1
-                if count == 1000:
-                    break
-            
-            #top10 = top10 / len(self.test_dataloader)
-            #mr = int(mr / len(self.test_dataloader))
-            top10 = top10 / count
-            mr = int(mr / count)
+        
+            top10 = top10 / len(self.test_dataloader)
+            mr = int(mr / len(self.test_dataloader))
+        
         print(top10)
         print(mr)
         return top10, mr

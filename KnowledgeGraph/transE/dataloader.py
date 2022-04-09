@@ -142,16 +142,20 @@ class TestDataloader():
             yield np.array(corrupted_triples, dtype=np.int64), np.array(data, dtype=np.int64)
 
     def sample_corrupt(self, triple, mode, need_filter=False):
-        corrupted_triples = []
-        for ent in self.ent2id:
-            tmp = deepcopy(triple)
-            tmp[mode] = ent
-            if need_filter:
-                if tmp[0] in self.train_mapping:
-                    if tmp[1] in self.train_mapping[tmp[0]]:
-                        if tmp[2] in self.train_mapping[tmp[0]][tmp[1]]:
-                            continue
-            corrupted_triples.append(tmp)
+        ent_ids = list(self.ent2id.keys())
+        ent_ids = np.array(ent_ids, dtype=np.int64).reshape((-1, ))
+        tile_triple = np.array(triple, dtype=np.int64)
+        tile_triple = np.tile(tile_triple, (ent_ids.shape[0], 1))[:, [abs(mode-1), -1]]
+        corrupted_triples = np.insert(tile_triple, mode, ent_ids, axis=1)
+        # for ent in self.ent2id:
+        #     tmp = deepcopy(triple)
+        #     tmp[mode] = ent
+        #     if need_filter:
+        #         if tmp[0] in self.train_mapping:
+        #             if tmp[1] in self.train_mapping[tmp[0]]:
+        #                 if tmp[2] in self.train_mapping[tmp[0]][tmp[1]]:
+        #                     continue
+        #     corrupted_triples.append(tmp)
         return corrupted_triples
 
     def init_train_mapping(self):
