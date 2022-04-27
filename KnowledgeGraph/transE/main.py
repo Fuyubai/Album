@@ -17,7 +17,7 @@ train_dataloader = TrainDataloader(
         'entity2id.txt',
         'relation2id.txt',
         'train2id.txt',
-        batch_size=1024
+        batch_size=1000
         )
 
 test_dataloader = TestDataloader(
@@ -31,20 +31,35 @@ test_dataloader = TestDataloader(
 model = TransE(
         ent_count=train_dataloader.ent_count,
         rel_count=train_dataloader.rel_count,
-        dim=200
+        dim=200,
+        p_norm=1
         )
 
-loss = MarginLoss(2.0)
+loss = MarginLoss(5.0)
 
 trainer = Trainer(
         model,
         train_dataloader,
         test_dataloader,
         loss,
-        epochs=1000
+        epochs=100
         )
 
-#trainer.train()    
-trainer.load_model('out/model.ckpt')
-trainer.evaluate(0, False)
+best_model_path = trainer.train()
+trainer.load_model(best_model_path)
+top10_head, mr_head = trainer.evaluate(0, False)
+top10_tail, mr_tail = trainer.evaluate(1, False)
+
+print('head')
+print('top10: {:.4f}, mean rank: {}'.format(top10_head, mr_head))
+print('tail')
+print('top10: {:.4f}, mean rank: {}'.format(top10_tail, mr_tail))
+print('head')
+print('top10: {:.4f}, mean rank: {}'.format((top10_head+top10_tail)/2, (mr_head+mr_tail)/2))
+
+
+
+
+
+
 

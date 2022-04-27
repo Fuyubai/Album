@@ -58,6 +58,7 @@ class Trainer():
                 name = str(epoch) + '_' + str(loss.item()) + '.ckpt'
                 path = os.path.join(self.save_dir, name)
                 self.save_model(path)
+        return path
     
     def evaluate(self, mode, need_filter=False):
         self.model.eval()
@@ -82,8 +83,6 @@ class Trainer():
             top10 = top10 / len(self.test_dataloader)
             mr = int(mr / len(self.test_dataloader))
         
-        print(top10)
-        print(mr)
         return top10, mr
 
     def save_model(self, path):
