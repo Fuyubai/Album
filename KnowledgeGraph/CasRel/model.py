@@ -17,72 +17,67 @@ class Casrel(nn.Module):
     def __init__(
             self, 
             dim, 
-            num_rels):
+            rels_num):
         super(Casrel, self).__init__()
         self.dim = dim
-        self.num_rels = num_rels
+        self.rels_num = rels_num
         self.bert = BertModel.from_pretrained('/data/aleph_data/pretrained/TinyBERT_4L_zh/')
-        self.sub_linear = nn.Linear(self.dim, 1)
-        self.rel_linear = nn.Linear(self.dim, self.num_rels)
+        self.sub_head_linear = nn.Linear(self.dim, 1)
+        self.sub_tail_linear = nn.Linear(self.dim, 1)
+        self.obj_head_linear = nn.Linear(self.dim, self.rels_num)
+        self.obj_tail_linear = nn.Linear(self.dim, self.rels_num)
 
-    def get_pred_subs(self, data):
-        input_ids = data['input_ids'] 
-        token_type_ids = data['token_type_ids']
-        attention_mask = data['attention_mask']
+    def get_pred_subs(self, encoding):
+        input_ids = encoding['input_ids'] 
+        token_type_ids = encoding['token_type_ids']
+        attention_mask = encoding['attention_mask']
 
         output = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
         
-        pred_subs = self.sub_linear(output[0])
-        pred_subs = torch.sigmoid(pred_subs).squeeze(2)
+        pred_sub_heads = self.sub_head_linear(output[0])
+        pred_sub_tails = self.sub_tail_linear(output[0])
+
+        pred_sub_heads = torch.sigmoid(pred_sub_heads)
+        pred_sub_tails = torch.sigmoid(pred_sub_tails)
         
-        return output, pred_subs
+        return output, pred_sub_heads, pred_sub_tails
 
-    def get_pred_rels(self, output, sub_labels):
-        sub_labels_ = sub_labels.unsqueeze(1).float()
-        sub_embed = torch.matmul(sub_labels_, output[0]).squeeze(1)
-        sub_embed = sub_embed / torch.sum(sub_labels_, dim=-1)
-        output_with_subs = sub_embed + output[1]
+    def get_pred_objs(self, output, pred_sub_heads, pred_sub_tails):
+        pred_sub_heads_ = pred_sub_heads.unsqueeze(1).float()
+        pred_sub_tails_ = pred_sub_tails.unsqueeze(1).float()
 
-        pred_rels = self.rel_linear(output_with_subs)
-        pred_rels = torch.sigmoid(pred_rels)
+        pred_sub = pred_sub_heads_ + pred_sub_tails_
+        sub_embed = torch.matmul(pred_sub, output[0])
+        sub_embed = sub_embed / torch.sum(pred_sub, dim=-1).unsqueeze(2)
+        output_with_subs = sub_embed + output[0]
 
-        return pred_rels
-
-    def forward(self, data, sub_labels):
-        output, pred_subs = self.get_pred_subs(data)
-        pred_rels = self.get_pred_rels(output, sub_labels)
-        # input_ids = data['input_ids'] 
-        # token_type_ids = data['token_type_ids']
-        # attention_mask = data['attention_mask']
-
-        # output = self.bert(input_ids, token_type_ids=token_type_ids, attention_mask=attention_mask)
+        pred_obj_heads = self.obj_head_linear(output_with_subs)
+        pred_obj_tails = self.obj_tail_linear(output_with_subs)
         
-        # pred_subs = self.sub_linear(output[0])
-        # pred_subs = torch.sigmoid(pred_subs).squeeze(2)
-        
-        # sub_labels_ = sub_labels.unsqueeze(1).float()
-        # sub_embed = torch.matmul(sub_labels_, output[0]).squeeze(1)
-        # sub_embed = sub_embed / torch.sum(sub_labels_, dim=-1)
-        # output_with_subs = sub_embed + output[1]
+        pred_obj_heads = torch.sigmoid(pred_obj_heads)
+        pred_obj_tails = torch.sigmoid(pred_obj_tails)
+    
+        return pred_obj_heads, pred_obj_tails
 
-        # pred_rels = self.rel_linear(output_with_subs)
-        # pred_rels = torch.sigmoid(pred_rels)
-
-        return pred_subs, pred_rels
+    def forward(self, encoding, sub_head, sub_tail):
+        output, pred_sub_heads, pred_sub_tails = self.get_pred_subs(encoding)
+        pred_obj_heads, pred_obj_tails = self.get_pred_objs(output, sub_head, sub_tail)
+        return pred_sub_heads, pred_sub_tails, pred_obj_heads, pred_obj_tails
 
 if __name__ == '__main__':
     from dataloader import CasDataset
     dataset = CasDataset(
-            'make_data/data/datas.json', 
+            'data/CMED/dev_triples.json',
+            'data/CMED/rel2id.json',
             '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
             )
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
     for data in dataloader:
         break
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = Casrel(312, len(dataset.rel_mapping)).to(device)
-    model(data[0], data[1])
+    model = Casrel(312, len(dataset.rel2id)).to(device)
+    model(data[0], data[3], data[4])
 
     
 

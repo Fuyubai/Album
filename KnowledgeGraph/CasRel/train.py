@@ -12,27 +12,38 @@ from model import Casrel
 from loss import UniteLoss
 from trainer import Trainer
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
+
+def filter_none_collate(batch):
+    batch = [b for b in batch if b is not None]
+    if not batch:
+        return None
+    return default_collate(batch)
 
 train_dataset = CasDataset(
-        'make_data/data/train.json', 
-        '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
-        )
-train_dataloader = DataLoader(train_dataset, batch_size=128, shuffle=True)
-train_dataset.dump_json([train_dataset.rels_mapping], 'rels_mapping.json')
+            'data/CMED/train_triples.json',
+            'data/CMED/rel2id.json',
+            '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
+            )
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, collate_fn=filter_none_collate)
 
 dev_dataset = CasDataset(
-        'make_data/data/dev.json', 
-        '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
-        )
-dev_dataloader = DataLoader(dev_dataset, batch_size=128, shuffle=True)
+            'data/CMED/dev_triples.json',
+            'data/CMED/rel2id.json',
+            '/data/aleph_data/pretrained/TinyBERT_4L_zh/',
+            is_test=True
+            )
+dev_dataloader = DataLoader(dev_dataset, batch_size=1, shuffle=True, collate_fn=filter_none_collate)
 
 test_dataset = CasDataset(
-        'make_data/data/test.json', 
-        '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
-        )
-test_dataloader = DataLoader(test_dataset, batch_size=128, shuffle=True)
+            'data/CMED/dev_triples.json',
+            'data/CMED/rel2id.json',
+            '/data/aleph_data/pretrained/TinyBERT_4L_zh/',
+            is_test=True
+            )
+test_dataloader = DataLoader(test_dataset, batch_size=1, shuffle=True, collate_fn=filter_none_collate)
 
-model = Casrel(312, len(train_dataset.rels_mapping))
+model = Casrel(312, len(train_dataset.rel2id))
 
 loss = UniteLoss()
 
@@ -42,19 +53,21 @@ trainer = Trainer(
         dev_dataloader,
         test_dataloader,
         loss,
-        epochs=10,
+        epochs=20,
         save_dir='out/',
         tokenizer_root='/data/aleph_data/pretrained/TinyBERT_4L_zh/',
-        rels_mapping='rels_mapping.json'
+        rel_path='data/CMED/rel2id.json'
         )
 
-#trainer.train()
+trainer.train()
 trainer.load_best_model()
-# f1_subs, f1_rels = trainer.evaluate(is_test=True)
+# metrics = trainer.dev_one_epoch(0)
+metrics = trainer.evaluate(is_test=True)
+print(metrics)
 # print(f1_subs)
 # print(f1_rels)
-subs, rels = trainer.predict('帮我查下贫液槽的资料')
-print(subs)
-print(rels)
+# subs, rels = trainer.predict('帮我查下贫液槽的资料')
+# print(subs)
+# print(rels)
 
 
