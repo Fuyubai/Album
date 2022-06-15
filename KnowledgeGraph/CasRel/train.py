@@ -21,7 +21,7 @@ def filter_none_collate(batch):
     return default_collate(batch)
 
 train_dataset = CasDataset(
-            'data/CMED/train_triples.json',
+            'data/CMED/test_triples.json',
             'data/CMED/rel2id.json',
             '/data/aleph_data/pretrained/TinyBERT_4L_zh/'
             )
@@ -61,13 +61,6 @@ trainer = Trainer(
 
 trainer.train()
 trainer.load_best_model()
-# metrics = trainer.dev_one_epoch(0)
 metrics = trainer.evaluate(is_test=True)
 print(metrics)
-# print(f1_subs)
-# print(f1_rels)
-# subs, rels = trainer.predict('帮我查下贫液槽的资料')
-# print(subs)
-# print(rels)
-
 

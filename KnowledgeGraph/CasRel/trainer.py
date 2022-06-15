@@ -74,31 +74,6 @@ class Trainer():
             total_loss += l.item()
 
         total_loss = total_loss / (i + 1)
-        print(s_l)
-        print(o_l)
-        return total_loss
-
-    def dev_one_epoch(self, epoch):
-        total_loss = 0
-        dev_log = tqdm(self.dev_dataloader)
-        dev_log.set_description('Dev Epoch: {}/{}'.format(epoch+1, self.epochs))
-        for i, data in enumerate(dev_log):
-            if data is None:
-                continue
-            encoding, sub_heads, sub_tails, sub_head, sub_tail, obj_heads, obj_tails = data
-            pred_sub_heads, pred_sub_tails, pred_obj_heads, pred_obj_tails = self.model(encoding, sub_head, sub_tail)
-
-            l = self.loss(
-                    sub_heads, sub_tails, 
-                    pred_sub_heads, pred_sub_tails,
-                    obj_heads, obj_tails, 
-                    pred_obj_heads, pred_obj_tails,
-                    encoding['attention_mask'])
-            
-            dev_log.set_postfix(loss='{:4f}'.format(l.item()))
-            total_loss += l.item()
-
-        total_loss = total_loss / (i + 1)
         return total_loss
 
     def train(self):
@@ -106,11 +81,8 @@ class Trainer():
         for epoch in range(self.epochs):
             self.model.train()
             loss = self.train_one_epoch(epoch)
-            #self.model.eval()
-            #loss = self.dev_one_epoch(epoch)
-                        
+                       
             _, _, _, _, _, f1_score = self.evaluate()
-            #f1_score = 100 - loss * 10
             print('val f1_score: {:4f}'.format(f1_score))
 
             if f1_score > max_f1:
@@ -170,37 +142,6 @@ class Trainer():
                                     else:
                                         pred_sr2o_map[(sub_head_idx, sub_tail_idx)].append([pred_obj_head.item(), pred_obj_tail.item(), i])
                         
-                        # r2o_h = {}
-                        # for pred_obj_head, pred_rel_head in zip(*pred_obj_heads):
-                        #     pred_obj_head, pred_rel_head = pred_obj_head.item(), pred_rel_head.item()
-                        #     if pred_rel_head in r2o_h:
-                        #         r2o_h[pred_rel_head].append(pred_obj_head)
-                        #     else:
-                        #         r2o_h[pred_rel_head] = [pred_obj_head]
-
-                        # r2o_t = {}
-                        # for pred_obj_tail, pred_rel_tail in zip(*pred_obj_tails):
-                        #     pred_obj_tail, pred_rel_tail = pred_obj_tail.item(), pred_rel_tail.item()
-                        #     if pred_rel_tail in r2o_t:
-                        #         r2o_t[pred_rel_tail].append(pred_obj_tail)
-                        #     else:
-                        #         r2o_t[pred_rel_tail] = [pred_obj_tail]
-
-
-
-                        # for pred_obj_head, pred_rel_head in zip(*pred_obj_heads):
-                        #     for pred_obj_tail, pred_rel_tail in zip(*pred_obj_tails):
-                        #         if pred_obj_head <= pred_obj_tail and pred_rel_head == pred_rel_tail:
-                        #             if (sub_head_idx, sub_tail_idx) in pred_sr2o_map:
-                        #                 pred_sr2o_map[(sub_head_idx, sub_tail_idx)].append(
-                        #                         [pred_obj_head, pred_obj_tail, pred_rel_head]
-                        #                     )
-                        #             else:
-                        #                 pred_sr2o_map[(sub_head_idx, sub_tail_idx)] = [
-                        #                         [pred_obj_head, pred_obj_tail, pred_rel_head]
-                        #                     ]
-                        #             break
-
                 gold_triples_set = set()
                 pred_triples_set = set()
                 for (s_h, s_t), v in sr2o_map.items():
