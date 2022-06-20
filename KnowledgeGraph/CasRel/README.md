@@ -35,3 +35,7 @@ python train.py
 - I try to fix this problem by applying a novel loss, which use for reference the warmup tragedy, can see it in loss.py.
 
 - It's simliar between two implements when using train set to train, but when use dev set to train, My implementation better than CasRel-pytorch-reimplement even it use a smaller pre-trained mdel. And it shows the effectiveness of my tragedy.
+
+### Tips
+- When using mutil losses, you should notice the magnitude of losses, because some big loss may devours the influence of small loss. So make those loss under same magnitude by giving a appropriate coefficient to the big loss, which is help model to fit.
+- When using mutil losses, model is hard to fit, so just be patient and wait more train epochs
